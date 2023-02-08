@@ -23,7 +23,7 @@ public class Expiry_Notification2 {
             connection.setDoOutput(true);
             connection.setRequestProperty("Content-Type", "application/json");
             
-            String body = "{\"username\":\"vambrale\",\"password\":\"V@run95?\"}";
+            String body = "{\"username\":\"vambrale\",\"password\":\"********\"}";
             DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream());
             outputStream.writeBytes(body);
             outputStream.flush();
