@@ -1,0 +1,140 @@
+package com.saviynt.utils;
+import java.io.*;
+import java.net.*;
+import java.util.*;
+
+import javax.net.ssl.HttpsURLConnection;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+
+
+public class Expiry_Notification2 {
+	
+	
+	public static void main (String[] args )  {
+		
+		try {
+			//connect to url and send post request to get access token
+            URL url = new URL("https://securdi-partner.saviyntcloud.com/ECM/api/login");
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "application/json");
+            
+            String body = "{\"username\":\"vambrale\",\"password\":\"V@run95?\"}";
+            DataOutputStream outputStream = new DataOutputStream(connection.getOutputStream());
+            outputStream.writeBytes(body);
+            outputStream.flush();
+            outputStream.close();
+            //get status code like 200/404/401  etc  
+            int responseCode = connection.getResponseCode();
+            System.out.println("Response code for Access Token Generation : " + responseCode);
+            // to read the access token complete body
+            InputStream inputStream = connection.getInputStream();
+            Scanner scanner = new Scanner(inputStream);
+            String responseBody = scanner.useDelimiter("\\A").next();
+            System.out.println("Response body: " + responseBody);
+            //to read only the access token from the body
+            JSONObject jsonObject = new JSONObject(responseBody);
+            String accessToken = jsonObject.getString("access_token");
+            System.out.println("Access Token: " + accessToken);
+                               
+            // Close the connection
+            scanner.close();
+            connection.disconnect();
+            //to fetch reports via analytics name as body and send post request to obtain details 
+            URL url1 = new URL("https://securdi-partner.saviyntcloud.com/ECM/api/v5/fetchRuntimeControlsDataV2");
+            HttpsURLConnection connection1 = (HttpsURLConnection) url1.openConnection();
+            connection1.setRequestMethod("POST");
+            connection1.setDoOutput(true);
+            connection1.setRequestProperty("Authorization","Bearer " + accessToken);
+            connection1.setRequestProperty("Content-Type", "application/json"); 
+            String body1 ="{\"analyticsname\": \"Account_Expiry_Notification\"}";
+            //read from the report
+            DataOutputStream outputStream1 = new DataOutputStream(connection1.getOutputStream());
+            outputStream1.writeBytes(body1);
+            outputStream1.flush();
+            //get status code like 200/404/401  etc 
+            int responseCode1 = connection1.getResponseCode();
+            System.out.println("Response code for fetching Analytics Report: " + responseCode1);         
+            //to read from the report            
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(connection1.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                sb.append(line);
+            }
+            connection1.disconnect();
+            //only fetch result parameter from the entire report
+            JSONObject json = new JSONObject(sb.toString());
+            JSONArray json1 = json.getJSONArray("results");
+            
+             
+            //fetch email from the result and display the emails  
+            for(int i=0;i<json1.length();i++)
+              {
+            	 
+                String result = json1.getString(i);
+            	//System.out.println("Result:" +result);
+            	
+                JSONObject jsonObject1 = new JSONObject(result);
+                Object email = jsonObject1.get("email");
+                Object uname=jsonObject1.get("username");
+                Object endate=jsonObject1.get("enddate");
+                System.out.println("Email: " + email);
+                URL url2 = new URL("https://securdi-partner.saviyntcloud.com/ECM/api/sendEmail");
+                Map<String,Object> params = new LinkedHashMap<>();
+                params.put("to", email);
+                params.put("from", "aahmed@securdi.com");
+                params.put("body","Hi "+ uname + ","+"\n\n"+"Your account with "+email+" is going to expire on "+endate+". \nTalk to your Manager or System Administrator for further details" );
+                params.put("subject", "Testing for analytics ");
+                StringBuilder postData = new StringBuilder();
+                for (Map.Entry<String,Object> param : params.entrySet()) {
+                    if (postData.length() != 0) postData.append('&');
+                    postData.append(URLEncoder.encode(param.getKey(), "UTF-8"));
+                    postData.append('=');
+                    postData.append(URLEncoder.encode(String.valueOf(param.getValue()), "UTF-8"));
+                }
+                byte[] postDataBytes = postData.toString().getBytes("UTF-8");
+                HttpsURLConnection connection2 = (HttpsURLConnection) url2.openConnection();
+                connection2.setRequestMethod("POST");
+                connection2.setDoOutput(true);
+                connection2.setRequestProperty("Authorization","Bearer " + accessToken);
+                connection2.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                connection2.setRequestProperty( "charset", "utf-8");
+                connection2.setUseCaches( true );
+                connection2.getOutputStream().write(postDataBytes);
+                
+                int responseCode2 = connection2.getResponseCode();
+                System.out.println("Response code for email sending : " + responseCode2); 
+                
+                
+                BufferedReader in = new BufferedReader(new InputStreamReader(connection2.getInputStream()));
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+                while ((inputLine = in.readLine()) != null) {
+                	              	
+                   response.append(inputLine);
+                }
+                System.out.println("Email Sending Response " +response );
+                in.close();
+                connection2.disconnect();
+                
+              }              
+        } catch (Exception e) {
+        	System.out.println("Error sending login request: " + e);
+        	e.printStackTrace();
+            }
+	}
+}
+
+	
+		
+
+   
+    
+	    
+
+
